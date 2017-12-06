@@ -5,7 +5,7 @@ import qualified Data.Sequence as Seq
 
 type Banks = Seq.Seq Int
 
-next_idx banks idx = if idx == (length banks - 1) then 0 else idx + 1
+next_idx banks idx = (idx + 1) `mod` (length banks)
 
 -- distribute 'to_distribute' blocks over the memory banks starting at 'idx'
 distrib :: Banks -> Int -> Int -> Banks
@@ -13,15 +13,15 @@ distrib banks idx 0 = banks
 distrib banks idx to_distribute = distrib updated_banks next_idx' (to_distribute - 1)
   where
     updated_banks = Seq.adjust' (+1) idx banks
-    next_idx' = next_idx banks idx
+    next_idx'     = next_idx banks idx
 
 -- run one balance cycle
 balance :: Banks -> Banks
-balance banks = distrib new_banks (next_idx new_banks idx_of_max) maxb
+balance banks = distrib new_banks (next_idx banks idx_of_max) maxb
   where
-    maxb = maximum banks
+    maxb       = maximum banks
     idx_of_max = fromMaybe 0 (Seq.elemIndexL maxb banks)
-    new_banks = Seq.update idx_of_max 0 banks
+    new_banks  = Seq.update idx_of_max 0 banks
 
 -- figure out the loop size by recursively balancing until we see a duplicate
 -- then return the distance to where we first saw the particular banks configuration
