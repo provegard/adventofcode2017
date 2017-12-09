@@ -1,12 +1,6 @@
 module Lib where
-import Data.Stack
 
-newtype Group = Group { score :: Int } deriving (Show, Eq)
-
-data Memory = Memory
-              { stck :: Stack Group
-              , groups :: [Group]
-              } deriving (Show)
+data Memory = Memory { currentGroupScore :: Int, accumScore:: Int }
 
 dropGarbage :: String -> String
 dropGarbage "" = ""
@@ -15,19 +9,13 @@ dropGarbage ('!':_:xs) = dropGarbage xs
 dropGarbage ('>':xs)   = xs
 dropGarbage (_:xs)     = dropGarbage xs
 
-newGroup stack = case stackPeek stack of
-    Just (Group s) -> stackPush stack $ Group $ s + 1
-    Nothing -> stackPush stack $ Group 1
+process :: Memory -> String -> Memory
+process mem ""                       = mem
+process (Memory cur acc) ('{':xs)    = process (Memory (cur + 1) acc) xs
+process mem (',':xs)                 = process mem xs
+process (Memory cur acc) ('}':xs)    = process (Memory (cur - 1) (acc + cur)) xs
+process mem stream                   = process mem $ dropGarbage stream
 
-findGroupsRec :: Memory -> String -> Memory
-findGroupsRec mem ""                       = mem
-findGroupsRec (Memory stack done) ('{':xs) = findGroupsRec (Memory (newGroup stack) done) xs
-findGroupsRec mem (',':xs)                 = findGroupsRec mem xs
-findGroupsRec (Memory stack done) ('}':xs) = case stackPop stack of
-    Just (s, g) -> findGroupsRec (Memory s (g : done)) xs
-    Nothing -> error "empty stack"
-findGroupsRec mem stream                   = findGroupsRec mem $ dropGarbage stream
-
-findGroups :: String -> [Group]
-findGroups stream = groups $ findGroupsRec emptyMem stream 
-    where emptyMem = Memory stackNew []
+findScore :: String -> Int
+findScore stream = accumScore $ process emptyMem stream 
+    where emptyMem = Memory 0 0

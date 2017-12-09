@@ -1,7 +1,6 @@
 module Lib.Tests where
 import Test.HUnit
 import Lib
-import qualified Data.Map as Map
 
 t1 = TestCase (assertEqual "empty garbage" "" (dropGarbage "<>"))
 t2 = TestCase (assertEqual "garbage containing random chars" "" (dropGarbage "<random characters>"))
@@ -12,11 +11,11 @@ t6 = TestCase (assertEqual "escaped ! and >" "" (dropGarbage "<!!!>>"))
 t7 = TestCase (assertEqual "stuff" "" (dropGarbage "<{o\"i!a,<{i<a>"))
 t8 = TestCase (assertEqual "garbage with trailing" "{}" (dropGarbage "<>{}"))
 
-t9 = TestCase (assertEqual "single group" [Group 1] (findGroups "{}"))
-t10 = TestCase (assertEqual "single group" [Group 1, Group 2] (findGroups "{{}}"))
-t11 = TestCase (assertEqual "single group" [Group 1] (findGroups "{<a>,<b>}"))
-t12 = TestCase (assertEqual "single group" [Group 1, Group 2] (findGroups "{<a>,<b>,{}}"))
-t13 = TestCase (assertEqual "single group" [Group 1, Group 2, Group 2] (findGroups "{{},{}}"))
+t9 = TestCase (assertEqual "single group" (1) (findScore "{}"))
+t10 = TestCase (assertEqual "single group" (1 + 2) (findScore "{{}}"))
+t11 = TestCase (assertEqual "single group" (1) (findScore "{<a>,<b>}"))
+t12 = TestCase (assertEqual "single group" (1 + 2) (findScore "{<a>,<b>,{}}"))
+t13 = TestCase (assertEqual "single group" (1 + 2 + 2) (findScore "{{},{}}"))
 
 
 tests = test [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10, t11, t12, t13]

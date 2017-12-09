@@ -3,7 +3,5 @@ import Lib
 
 main = do
   stream <- getLine
-  let foundGroups = findGroups stream
-  let scores = map score foundGroups
-  let totalScore = sum scores
-  putStrLn (show totalScore)
+  let score = findScore stream
+  print score
