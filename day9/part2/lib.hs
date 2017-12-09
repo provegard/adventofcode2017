@@ -11,37 +11,30 @@ data Memory = Memory
               , garbageCount :: Int
               } deriving (Show)
 
+-- dropGarbage0 parses known garbage ('<' has already been processed)
 dropGarbage0 :: String -> (String, Int)
-dropGarbage0 "" = ("", 0)
-dropGarbage0 stream = case head stream of
-    '!' -> dropGarbage0 $ drop 2 stream
-    '>' -> (tail stream, 0)
-    _   -> do
-        let rest = dropGarbage0 $ tail stream
-        (fst rest, 1 + snd rest)
-dropGarbage :: String -> (String, Int)
-dropGarbage "" = ("", 0)
-dropGarbage stream = case head stream of
-    '<' -> dropGarbage0 $ tail stream
-    x   -> error ("unexpected garbage: " ++ [x])
+dropGarbage0 ""         = ("", 0)
+dropGarbage0 ('!':_:xs) = dropGarbage0 xs
+dropGarbage0 ('>':xs)   = (xs, 0)
+dropGarbage0 (_:xs)     = (rest, 1 + gc) where (rest, gc) = dropGarbage0 xs
 
-newGroup stack = case stackPeek stack of
-    Just (Group s) -> stackPush stack $ Group (s + 1)
-    Nothing -> stackPush stack $ Group 1
+-- dropGarbage is the starting point and accepts only '<'
+dropGarbage :: String -> (String, Int)
+dropGarbage ('<':xs) = dropGarbage0 xs
+dropGarbage (x:xs)   = error ("unexpected garbage: " ++ [x])
+
+newGroup stack = stackPush stack $ Group (maybe 1 (\ g -> score g + 1) (stackPeek stack))
 
 findGroupsRec :: Memory -> String -> Memory
 findGroupsRec mem "" = mem
-findGroupsRec (Memory stack done gc) stream = case head stream of
-    '{' -> findGroupsRec (Memory (newGroup stack) done gc) (tail stream)
-    '}' -> case stackPop stack of
-        Just (s, g) -> findGroupsRec (Memory s (g : done) gc) (tail stream)
-        Nothing -> error "empty stack"
-    ',' -> findGroupsRec (Memory stack done gc) (tail stream)
-    _   -> do
-        let gbg = dropGarbage stream
-        findGroupsRec (Memory stack done (snd gbg + gc)) (fst gbg)
+findGroupsRec (Memory stack done gc) ('{':xs) = findGroupsRec (Memory (newGroup stack) done gc) xs
+findGroupsRec mem (',':xs) = findGroupsRec mem xs
+findGroupsRec (Memory stack done gc) ('}':xs) = case stackPop stack of
+    Just (s, g) -> findGroupsRec (Memory s (g : done) gc) xs
+    Nothing -> error "empty stack"
+findGroupsRec (Memory stack done gc) stream = findGroupsRec (Memory stack done (skippedGc + gc)) rest
+    where (rest, skippedGc) = dropGarbage stream
         
 countGarbage :: String -> Int
-countGarbage stream = do
-    let mem = findGroupsRec (Memory stackNew [] 0) stream
-    garbageCount mem
+countGarbage stream = garbageCount $ findGroupsRec emptyMem stream
+    where emptyMem = Memory stackNew [] 0
