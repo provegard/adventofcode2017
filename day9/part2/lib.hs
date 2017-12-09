@@ -1,23 +1,15 @@
 module Lib where
 import Data.Maybe
 import Data.List
+import Data.Stack
 
 newtype Group = Group { score :: Int } deriving (Show, Eq)
 
-newtype Stack = Stack [Group] deriving (Show)
-
 data Memory = Memory
-              { stck :: Stack
+              { stck :: Stack Group
               , groups :: [Group]
               , garbageCount :: Int
               } deriving (Show)
-
-stackNew = Stack []
-stackPush (Stack gs) g = Stack $ g : gs
-stackPeek (Stack []) = Nothing
-stackPeek (Stack gs) = Just $ head gs
-stackPop (Stack []) = Nothing
-stackPop (Stack gs) = Just (Stack $ tail gs, head gs)
 
 dropGarbage0 :: String -> (String, Int)
 dropGarbage0 "" = ("", 0)
