@@ -10,14 +10,14 @@ main = hspec $ do
     --         (hash [0, 1, 2, 3, 4] [3, 4, 1, 5]) `shouldBe` [3, 4, 2, 1, 0]
     describe "takeC" $ do
         it "takes from a list" $ do
-            (toList $ takeC (Seq.fromList [0, 1, 2]) 0 2) `shouldBe` [0, 1]
+            toList (takeC (Seq.fromList [0, 1, 2]) 0 2) `shouldBe` [0, 1]
         it "wraps around" $ do
-            (toList $ takeC (Seq.fromList [0, 1, 2]) 2 2) `shouldBe` [2, 0]
+            toList (takeC (Seq.fromList [0, 1, 2]) 2 2) `shouldBe` [2, 0]
     describe "updateC"  $ do
         it "updates a list" $ do
-            (toList $ updateC (Seq.fromList [9, 9, 9]) 0 (Seq.fromList [2, 3])) `shouldBe` [2, 3, 9]
+            toList (updateC (Seq.fromList [9, 9, 9]) 0 (Seq.fromList [2, 3])) `shouldBe` [2, 3, 9]
         it "wraps around" $ do
-            (toList $ updateC (Seq.fromList [9, 9, 9]) 2 (Seq.fromList [5, 4])) `shouldBe` [4, 9, 5]
+            toList (updateC (Seq.fromList [9, 9, 9]) 2 (Seq.fromList [5, 4])) `shouldBe` [4, 9, 5]
     -- describe "verHash" $ do
     --     it "verifies" $ do
     --         (verHash [0, 1, 2, 3, 4] [3, 4, 1, 5]) `shouldBe` (12 :: Int)
@@ -26,15 +26,12 @@ main = hspec $ do
             (parseInput "") `shouldBe` [17, 31, 73, 47, 23]
         it "uses the ASCII code of all chars" $ do
             (parseInput "1,2,3") `shouldBe` [49,44,50,44,51,17, 31, 73, 47, 23]
-    describe "dense" $ do
-        it "xors things together" $ do
-            (dense (Seq.fromList [65, 27, 9, 1, 4, 3, 40, 50, 91, 7, 6, 0, 2, 5, 68, 22])) `shouldBe` (64 :: Int)
-    describe "dense" $ do
-        it "xors things together" $ do
-            (dense (Seq.fromList [65, 27, 9, 1, 4, 3, 40, 50, 91, 7, 6, 0, 2, 5, 68, 22])) `shouldBe` (64 :: Int)
-    describe "densify" $ do
-        it "generates a Seq" $ do
-            (densify (Seq.fromList [65, 27, 9, 1, 4, 3, 40, 50, 91, 7, 6, 0, 2, 5, 68, 22])) `shouldBe` (Seq.fromList [64])
+    -- describe "dense" $ do
+    --     it "xors things together" $ do
+    --         (dense (Seq.fromList [65, 27, 9, 1, 4, 3, 40, 50, 91, 7, 6, 0, 2, 5, 68, 22])) `shouldBe` (64 :: Int)
+    describe "makeDense" $ do
+        it "generates a dense Seq" $ do
+            (makeDense (Seq.fromList [65, 27, 9, 1, 4, 3, 40, 50, 91, 7, 6, 0, 2, 5, 68, 22])) `shouldBe` (Seq.fromList [64])
     describe "realHash" $ do
         it "hashes empty string" $ do
             (realHash "") `shouldBe` "a2582a3a0e66e6e86e3812dcb672a272"
