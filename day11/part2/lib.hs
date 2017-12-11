@@ -14,7 +14,8 @@ move cc "sw" = CubeCoordinate (ccX cc - 1) (ccY cc) (ccZ cc + 1)
 move cc "nw" = CubeCoordinate (ccX cc - 1) (ccY cc + 1) (ccZ cc)
 move _ x     = error ("unknown direction: " ++ x)
 
-max3 a b c = max (max a b) c
+max3 :: Int -> Int -> Int -> Int
+max3 a b = max (max a b)
 
 manhattan :: CubeCoordinate -> CubeCoordinate -> Int
 manhattan a b = max3 (abs (ccX a - ccX b)) (abs (ccY a - ccY b)) (abs (ccZ a - ccZ b))
@@ -31,9 +32,3 @@ furthestDistance stepsOut = do
             let newDist = manhattan start newCoord
             let newMax = max m newDist
             (newCoord, newMax)
-
--- stepDistance :: [String] -> Int
--- stepDistance stepsOut = do
---     let start = CubeCoordinate 0 0 0
---     let childCoord = foldl move start stepsOut
---     manhattan childCoord start
