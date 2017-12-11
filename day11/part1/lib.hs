@@ -5,23 +5,21 @@ import Data.Foldable
 
 data CubeCoordinate = CubeCoordinate { ccX :: Int, ccY :: Int, ccZ :: Int } deriving (Eq, Show)
 
+add :: CubeCoordinate -> (Int, Int, Int) -> CubeCoordinate
+add cc (x, y, z) = CubeCoordinate (ccX cc + x) (ccY cc + y) (ccZ cc + z)
+
 move :: CubeCoordinate -> String -> CubeCoordinate
-move cc "n" = CubeCoordinate (ccX cc) (ccY cc + 1) (ccZ cc - 1)
-move cc "ne" = CubeCoordinate (ccX cc + 1) (ccY cc) (ccZ cc - 1)
-move cc "se" = CubeCoordinate (ccX cc + 1) (ccY cc - 1) (ccZ cc)
-move cc "s"  = CubeCoordinate (ccX cc) (ccY cc - 1) (ccZ cc + 1)
-move cc "sw" = CubeCoordinate (ccX cc - 1) (ccY cc) (ccZ cc + 1)
-move cc "nw" = CubeCoordinate (ccX cc - 1) (ccY cc + 1) (ccZ cc)
+move cc "n"  = add cc (0, 1, -1)
+move cc "ne" = add cc (1, 0, -1)
+move cc "se" = add cc (1, -1, 0)
+move cc "s"  = add cc (0, -1, 1)
+move cc "sw" = add cc (-1, 0, 1)
+move cc "nw" = add cc (-1, 1, 0)
 move _ x     = error ("unknown direction: " ++ x)
 
-max3 :: Int -> Int -> Int -> Int
-max3 a b = max (max a b)
-
-manhattan :: CubeCoordinate -> CubeCoordinate -> Int
-manhattan a b = max3 (abs (ccX a - ccX b)) (abs (ccY a - ccY b)) (abs (ccZ a - ccZ b))
+distance :: CubeCoordinate -> Int
+distance (CubeCoordinate x y z) = maximum $ map abs [x, y, z]
 
 stepDistance :: [String] -> Int
-stepDistance stepsOut = do
-    let start = CubeCoordinate 0 0 0
-    let childCoord = foldl move start stepsOut
-    manhattan childCoord start
+stepDistance stepsOut = let start = CubeCoordinate 0 0 0
+                        in distance $ foldl move start stepsOut
