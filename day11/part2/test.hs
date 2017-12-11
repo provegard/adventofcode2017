@@ -3,15 +3,6 @@ import Test.Hspec
 import Lib
 
 main = hspec $ do
-    -- describe "stepsRequired" $ do
-    --     it "ne,ne,ne" $ do
-    --         (stepsRequired ["ne", "ne", "ne"]) `shouldBe` ["ne", "ne", "ne"]
-    --     it "ne,ne,sw,sw" $ do
-    --         (stepsRequired ["ne", "ne", "sw", "sw"]) `shouldBe` []
-    --     it "ne,ne,s,s" $ do
-    --         (stepsRequired ["ne", "ne", "s", "s"]) `shouldBe` ["se", "se"]
-    --     it "se,sw,se,sw,sw" $ do
-    --         (stepsRequired ["se", "sw", "se", "sw", "sw"]) `shouldBe` ["s", "s", "sw"]
     describe "stepDistance" $ do
         it "ne,ne,ne" $ do
             (stepDistance ["ne", "ne", "ne"]) `shouldBe` (3 :: Int)
