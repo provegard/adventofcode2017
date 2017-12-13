@@ -6,18 +6,11 @@ import Data.List.Split
 toInt :: String -> Int
 toInt x = read x :: Int
 
--- stripTrailingComma :: String -> String
--- stripTrailingComma = rstrip
---   where
---     lstrip = dropWhile (`elem` ",")
---     rstrip = reverse . lstrip . reverse
-
---data Layer = Layer { depth :: Int, scannerRange :: Int, scannerPosition :: Int }
 data Layer = Layer { scannerRange :: Int, scannerPosition :: Int, scannerDirection :: Int } deriving (Show, Eq)
 
 type Layers = [(Int, Layer)]
 
-data World = World { worldLayers :: Layers, packetPos :: Int, currentSeverity :: Int }
+data World = World { worldLayers :: Layers, packetPos :: Int, caught :: Bool, maxDepth :: Int }
 
 type Time = Int
 
@@ -32,57 +25,47 @@ moveScanner (Layer sr sp sd)
 
 readLayers :: [String] -> Layers
 readLayers = map createLayer
+    where createLayer line = let (d:r:_) = splitOn ":" line
+                             in (toInt d, newLayer $ toInt r)
+
+maxDepthOf :: Layers -> Int
+maxDepthOf layers = maximum $ map fst layers
+
+advanceLayers :: Layers -> Layers
+advanceLayers = map moveScannerTup
+    where moveScannerTup (depth, layer) = (depth, moveScanner layer)
+
+-- generate an infinite sequence of layers (layer configurations)
+layersGenerator :: Layers -> [Layers]
+layersGenerator layers = layers : layersGenerator (advanceLayers layers)
+
+isCaughtIn :: Layers -> Int -> Bool
+isCaughtIn layers maxDepth = do
+    let world = World layers (-1) False maxDepth
+    any caught (generateWorlds world)
     where
-        createLayer line = do
-            let (d:r:_) = splitOn ":" line
-            (toInt d, newLayer $ toInt r)
+        generateWorlds :: World -> [World]
+        generateWorlds world@(World layers packetPos _ maxDepth) = world : nextWorlds
+            where
+                nextWorlds
+                    | packetPos > maxDepth = []
+                    | otherwise = do
+                        let newPos = packetPos + 1
+                        let caught = isCaught newPos
+                        let newLayers = advanceLayers layers
+                        let newWorld = World newLayers newPos caught maxDepth
+                        world : generateWorlds newWorld
+                    where
+                        isCaught aPos = case lookup aPos layers of
+                            Just l | scannerPosition l == 0 -> True
+                            _                               -> False
 
-maxDepth :: Layers -> Int
-maxDepth layers = maximum $ map fst layers
-
--- Advance the world without moving packet pos or updating severity
-advanceWorldOnly :: World -> World
-advanceWorldOnly world@(World layers packetPos currentSeverity)
-    | packetPos > maxDepth layers = world
-    | otherwise                   = do
-        let newLayers = map moveScannerTup layers
-        World newLayers packetPos currentSeverity
-        where
-            moveScannerTup (depth, layer) = (depth, moveScanner layer)
-
-tick :: Time -> World -> World
-tick time world@(World layers packetPos currentSeverity)
-    | packetPos > maxDepth layers = world
-    | otherwise                   = do
-        let newPos = packetPos + 1
-        let newSeverity = calcSeverity newPos + currentSeverity
-        let movedWorld = advanceWorldOnly world
-        --let newWorld = World newLayers newPos newSeverity
-        let newWorld = World (worldLayers movedWorld) newPos newSeverity
-        tick (time + 1) newWorld
-        where
-            calcSeverity aPos = case lookup aPos layers of
-                Just l  | scannerPosition l == 0 -> 1 -- arbitrary > 0
-                _                                -> 0
-
--- getSeverity :: Layers -> Int -> Int
--- getSeverity layers delay = do
---     let world = World layers (-1) 0
---     let resultingWorld = tick 0 delay world
---     currentSeverity resultingWorld
-
-findDelay :: World -> Int -> Int
---findDelay layers delay = if getSeverity layers delay == 0 then delay else findDelay layers (delay + 1)
-findDelay world delay = do
-    let whatIfWorld = tick 0 world
-    if currentSeverity whatIfWorld == 0 then
-        -- found it
-        delay
-    else
-        findDelay (advanceWorldOnly world) (delay + 1)
+findDelay :: [Layers] -> Int -> Int -> Int
+findDelay (layers:remaining) delay maxD epth = 
+    if not (isCaughtIn layers maxDepth) then delay else findDelay remaining (delay + 1) maxDepth
 
 getMinDelay :: [String] -> Int
 getMinDelay lines = do
     let layers = readLayers lines
-    let baseWorld = World layers (-1) 0
-    findDelay baseWorld 0
+    let layersList = layersGenerator layers
+    findDelay layersList 0 (maxDepthOf layers)
