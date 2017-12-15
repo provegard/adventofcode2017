@@ -5,8 +5,6 @@ import Data.Maybe
 import Data.Foldable
 import Data.List
 
--- (row, col), 0-based
---newtype Coord = Coord (Int, Int)
 type Node = Int
 newtype Bits = Bits [Int]
 data RowHash = RowHash Int Bits
@@ -47,7 +45,7 @@ zipWithIndex = zip [0..]
 rowHashToRowNodes :: RowHash -> RowNodes
 rowHashToRowNodes (RowHash rowIdx (Bits bits)) = do
     let indexedBits = zipWithIndex bits
-    let indexedOnes = filter (\t -> snd t == 1) indexedBits
+    let indexedOnes = filter ((==) 1 . snd) indexedBits
     RowNodes $ map toNode indexedOnes
     where
         toNode (idx, _) = rowIdx * 128 + idx
@@ -80,11 +78,9 @@ findConnectedNodes (RowNodes nodes) maybeNextRow = do
             ConnectedNode x deps
 
 findAllConnectedNodes :: [RowNodes] -> [ConnectedNode]
-findAllConnectedNodes = finder
-    where
-        finder []         = []
-        finder [x]        = findConnectedNodes x Nothing
-        finder (x:y:rest) = findConnectedNodes x (Just y) ++ finder (y : rest)
+findAllConnectedNodes []         = []
+findAllConnectedNodes [x]        = findConnectedNodes x Nothing
+findAllConnectedNodes (x:y:rest) = findConnectedNodes x (Just y) ++ findAllConnectedNodes (y : rest)
 
 toGraph :: [RowNodes] -> Graph
 toGraph listOfRowNodes = do
