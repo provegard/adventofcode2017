@@ -3,5 +3,5 @@ import Lib
 
 main = do
   str <- getLine
-  let s = countBitsInGrid str
+  let s = countRegions str
   print s

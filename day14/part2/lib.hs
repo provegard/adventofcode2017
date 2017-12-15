@@ -2,12 +2,16 @@ module Lib where
 import Hash (realHash)
 import Data.Graph
 import Data.Maybe
+import Data.Foldable
+import Data.List
 
 -- (row, col), 0-based
 --newtype Coord = Coord (Int, Int)
+type Node = Int
 newtype Bits = Bits [Int]
 data RowHash = RowHash Int Bits
-data RowNodes = RowNodes [(Int, Vertex)]
+newtype RowNodes = RowNodes [Node]
+data ConnectedNode = ConnectedNode Node [Node] deriving (Eq, Show)
 
 numBits :: Char -> [Int]
 numBits '0' = [0,0,0,0]
@@ -27,6 +31,9 @@ numBits 'd' = [1,1,0,1]
 numBits 'e' = [1,1,1,0]
 numBits 'f' = [1,1,1,1]
 
+colIndexOf :: Node -> Int
+colIndexOf node = node `mod` 128
+
 allBitsInHash :: String -> [Int]
 allBitsInHash = concatMap numBits
 
@@ -43,31 +50,48 @@ rowHashToRowNodes (RowHash rowIdx (Bits bits)) = do
     let indexedOnes = filter (\t -> snd t == 1) indexedBits
     RowNodes $ map toNode indexedOnes
     where
-        toNode (idx, _) = (idx, rowIdx * 128 + idx)
+        toNode (idx, _) = rowIdx * 128 + idx
 
-findEdgesRec :: (RowNodes, RowNodes) -> [Edge]
-findEdgesRec (RowNodes cur, RowNodes next) = do
-    let curTuples = zip cur (tail cur)
-    let edgesWithinCur = concatMap (\(a1, a2) -> [(snd a1, snd a2) | fst a2 == 1 + fst a1]) curTuples
-    let edgesAcrossRows = concatMap findCrossRowEdge cur
-    edgesWithinCur ++ edgesAcrossRows
+findConnectedNodes :: RowNodes -> Maybe RowNodes -> [ConnectedNode]
+findConnectedNodes (RowNodes nodes) maybeNextRow = do
+    let acrossRows = case maybeNextRow of
+            Just (RowNodes nextNodes) -> concatMap (findAcrossRow nextNodes) nodes
+            Nothing -> []
+    merged $ connectToNext nodes ++ acrossRows
     where
-        findCrossRowEdge x = case lookup (fst x) next of
-            Just vert -> [(snd x, vert)]
-            Nothing   -> []
+        connection a b = do
+            let colA = colIndexOf a
+            let colB = colIndexOf b
+            if colA + 1 == colB then ConnectedNode a [b] else ConnectedNode a []
+        connectToNext :: [Node] -> [ConnectedNode]
+        connectToNext []          = []
+        connectToNext [x]         = [ConnectedNode x []]
+        connectToNext (x:y:rest)  = connection x y : connectToNext (y : rest)
+        findAcrossRow nextNodes x = case find (\n -> colIndexOf n == colIndexOf x) nextNodes of
+                Just other -> [ConnectedNode x [other]]
+                Nothing    -> []
+        merged listOfConnectedNodes = do
+            let sorted = sortBy (\(ConnectedNode c1 _) (ConnectedNode c2 _) -> compare c1 c2) listOfConnectedNodes
+            let grouped = groupBy (\(ConnectedNode c1 _) (ConnectedNode c2 _) -> c1 == c2) sorted
+            map mergeNodes grouped
+        mergeNodes connectedNodesWithSameNode = do
+            let (ConnectedNode x _) = head connectedNodesWithSameNode
+            let deps = concatMap (\(ConnectedNode _ d) -> d) connectedNodesWithSameNode
+            ConnectedNode x deps
 
-
-findEdges :: [RowNodes] -> [Edge]
-findEdges listOfRowNodes = concatMap findEdgesRec $ zip listOfRowNodes (tail listOfRowNodes)
-
-bounds :: [Edge] -> (Vertex, Vertex)
-bounds theEdges = let allV = map fst theEdges ++ map snd theEdges
-                  in (minimum allV, maximum allV)
+findAllConnectedNodes :: [RowNodes] -> [ConnectedNode]
+findAllConnectedNodes = finder
+    where
+        finder []         = []
+        finder [x]        = findConnectedNodes x Nothing
+        finder (x:y:rest) = findConnectedNodes x (Just y) ++ finder (y : rest)
 
 toGraph :: [RowNodes] -> Graph
 toGraph listOfRowNodes = do
-    let edges = findEdges listOfRowNodes
-    buildG (bounds edges) edges
+    let listOfConnectedNodes = findAllConnectedNodes listOfRowNodes
+    let buildInput = map (\(ConnectedNode x deps) -> (x, x, deps)) listOfConnectedNodes
+    let (g, _) = graphFromEdges' buildInput
+    g
 
 countRegions :: String -> Int
 countRegions input = do
