@@ -2,18 +2,15 @@ module Lib where
 import Data.Bits
 
 generate :: Int -> Int -> [Int]
-generate f n = do
-    let next = (n * f) `mod` 2147483647
-    next : generate f next
+generate f n = let next = (n * f) `mod` 2147483647
+               in next : generate f next
 
 generateFiltered :: Int -> Int -> Int -> [Int]
 generateFiltered m f n = [ x | x <- generate f n, x `mod` m == 0 ] 
 
 valuesMatch :: Int -> Int -> Bool    
-valuesMatch a b = do
-    let lowA = (.&.) a 65535
-    let lowB = (.&.) b 65535
-    lowA == lowB
+valuesMatch a b = let low16 = (.&.) (65535 :: Int)
+                  in low16 a == low16 b
 
 findMatchesFrom :: Int -> Int -> Int
 findMatchesFrom a b = do
