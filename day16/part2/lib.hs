@@ -176,11 +176,14 @@ debugDancers (Dancers si dancers indices len) move = do
 finalOrderMulti :: Int -> Int -> String -> String
 finalOrderMulti repeatCount dancerCount str = do
     let moves = parseInput str -- a list
+    let rc = repeatCount `mod` 42 -- after 42 rep we're back to init
     runST $ do
         dancers <- createDancers dancerCount
-        forM_ [1..repeatCount] $ \_ -> do
+        forM_ [1..rc] $ \r -> do
             forM_ moves $ \m -> do
                 -- str <- debugDancers dancers m
                 -- applyDanceMove (trace str dancers) m
                 applyDanceMove dancers m
+            -- s <- dancersToString dancers
+            -- when (s == "abcdefghijklmnop") $ error ("oops " ++ show r)
         dancersToString dancers
