@@ -1,16 +1,22 @@
+{-# LANGUAGE BangPatterns #-}
 module Lib where
-import Data.Char
 import qualified Data.Sequence as Seq
 
-doStep :: (Int, Seq.Seq Int) -> Int -> Int -> Int -> (Int, Seq.Seq Int)
-doStep state 0 _ _ = state
-doStep (cp, s) stepsLeft stepSize insertionValue = do
-    let newPos = 1 + ((cp + stepSize) `mod` Seq.length s)
-    let newS = Seq.insertAt newPos insertionValue s
-    doStep (newPos, newS) (stepsLeft - 1) stepSize (insertionValue + 1)
+type Buffer = Seq.Seq Int
+type State = (Int, Buffer)
 
+doStep :: State -> Int -> Int -> Int -> State
+doStep buf 0 _ _ = buf
+doStep (cp, !buf) stepsLeft stepSize insertionValue = do
+    let newPos = 1 + ((cp + stepSize) `mod` Seq.length buf)
+    let newBuf = Seq.insertAt newPos insertionValue buf
+    doStep (newPos, newBuf) (stepsLeft - 1) stepSize (insertionValue + 1)
 
-spinLock :: Int -> Int -> (Int, Seq.Seq Int)
+spinLock :: Int -> Int -> State
 spinLock iterationCount stepSize = do
     let initial = Seq.fromList [0]
     doStep (0, initial) iterationCount stepSize 1
+
+nextVal :: State -> Int
+nextVal (cp,b) = Seq.index b (cp + 1)
+    
