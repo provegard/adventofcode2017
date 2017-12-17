@@ -72,20 +72,33 @@ createDancers num = do
 
 swapInt :: STUArray s Int Int -> Int -> Int -> ST s ()
 swapInt arr i1 i2 = do
-    d1 <- readArray arr i1
-    d2 <- readArray arr i2
-    writeArray arr i1 d2
-    writeArray arr i2 d1
+    d1 <- unsafeRead arr i1
+    d2 <- unsafeRead arr i2
+    unsafeWrite arr i1 d2
+    unsafeWrite arr i2 d1
     return ()
+
+swapInt_ :: STUArray s Int Int -> Int -> Int -> Int -> Int -> ST s ()
+swapInt_ arr i1 i2 d1 d2 = do
+    unsafeWrite arr i1 d2
+    unsafeWrite arr i2 d1
+    return ()
+
+
 -- TODO: WTF? How do I write one function for this?? type X = Int | Char ??
 swapChar :: STUArray s Int Char -> Int -> Int -> ST s ()
 swapChar arr i1 i2 = do
-    d1 <- readArray arr i1
-    d2 <- readArray arr i2
-    writeArray arr i1 d2
-    writeArray arr i2 d1
+    d1 <- unsafeRead arr i1
+    d2 <- unsafeRead arr i2
+    unsafeWrite arr i1 d2
+    unsafeWrite arr i2 d1
     return ()
     
+swapChar_ :: STUArray s Int Char -> Int -> Int -> Char -> Char -> ST s ()
+swapChar_ arr i1 i2 d1 d2 = do
+    unsafeWrite arr i1 d2
+    unsafeWrite arr i2 d1
+    return ()
 
 realIdx :: Dancers s -> Int -> ST s Int
 realIdx (Dancers si s _ len) i2 = do
@@ -109,12 +122,12 @@ applyDanceMove d@(Dancers si dancers indices arrLen) move = case move of
         ri1 <- realIdx d i1
         ri2 <- realIdx d i2
         -- find che characters, so we can find the slots
-        p1 <- readArray dancers ri1
-        p2 <- readArray dancers ri2
+        p1 <- unsafeRead dancers ri1
+        p2 <- unsafeRead dancers ri2
         let slotOfP1 = charToInt p1
         let slotOfP2 = charToInt p2
         
-        swapChar dancers ri1 ri2
+        swapChar_ dancers ri1 ri2 p1 p2
         -- swapInt indices ri1 ri2
         swapInt indices slotOfP1 slotOfP2
         return ()
@@ -123,12 +136,12 @@ applyDanceMove d@(Dancers si dancers indices arrLen) move = case move of
         let slotOfP1 = charToInt p1
         let slotOfP2 = charToInt p2
         -- find the indices stored in the slots
-        realIndexOfP1 <- readArray indices slotOfP1
-        realIndexOfP2 <- readArray indices slotOfP2
+        realIndexOfP1 <- unsafeRead indices slotOfP1
+        realIndexOfP2 <- unsafeRead indices slotOfP2
         -- swap the dancers
         swapChar dancers realIndexOfP1 realIndexOfP2
         -- swap contents of the slots
-        swapInt indices slotOfP1 slotOfP2
+        swapInt_ indices slotOfP1 slotOfP2 realIndexOfP1 realIndexOfP2
 
         -- figure out "virtual" indices (i.e. what )
         -- startIndex <- readSTRef si
