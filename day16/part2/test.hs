@@ -1,19 +1,12 @@
 module Lib.Tests where
 import Test.Hspec
 import Lib
-import Control.Monad
-import Control.Monad.ST
-import Data.Array.ST
-import Data.Array.Unboxed
-import Data.STRef
 
 dance5 :: [DanceMove] -> String
 dance5 moves = do
-    let str = runST $ do
-        dancers <- createDancers 5
-        forM_ moves $ \m -> applyDanceMove dancers m
-        dancersToString dancers
-    str
+    let dancers = createDancers 5
+    let newDancers = foldl applyDanceMove dancers moves
+    dancersToString newDancers
 
 main = hspec $ do
     describe "parseInput" $ do
@@ -27,7 +20,7 @@ main = hspec $ do
             (parseInput "s5,pe/b") `shouldBe` [(Spin 5), (Partner 'e' 'b')]
     describe "createDancers" $ do
         it "creates them" $ do
-            let str = runST $ createDancers 5 >>= dancersToString
+            let str = dancersToString $ createDancers 5
             str `shouldBe` "abcde"
     describe "applyDanceMove" $ do
         it "applies Spin" $ do
@@ -65,8 +58,6 @@ main = hspec $ do
     describe "finalOrderMulti" $ do
         it "works for the example, 1 iteration only" $ do
             (finalOrderMulti 1 5 "s1,x3/4,pe/b") `shouldBe` "baedc"
-        -- it "works for the example, 2 iterations" $ do
-        --     (finalOrderMulti 2 5 "s1,x3/4,pe/b") `shouldBe` "ceadb"
-        it "works for the example, debug" $ do
-            (finalOrderMulti 1 5 "s1,x3/4,pe/b,s1,x3/4,pe/b") `shouldBe` "ceadb"
+        it "works for the example, 2 iterations" $ do
+            (finalOrderMulti 2 5 "s1,x3/4,pe/b") `shouldBe` "ceadb"
     
