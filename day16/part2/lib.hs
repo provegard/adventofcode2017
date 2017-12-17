@@ -1,6 +1,6 @@
-{-# LANGUAGE BangPatterns #-}
 module Lib where
 import Data.Char
+import Data.List
 import Data.List.Split
 import qualified Data.Sequence as Seq
 import Data.Foldable
@@ -44,7 +44,7 @@ applyDanceMove dancers move = case move of
         let d1 = Seq.index dancers i1
         let d2 = Seq.index dancers i2
         let r1 = Seq.update i1 d2 dancers
-        Seq.update i2 d1 r1
+        Seq.update i2 d1 r1 -- ugly with 2 updates, Vector's bulk update is nicer
     Partner p1 p2  -> do
         let ix = Seq.findIndicesL (\d -> d == p1 || d == p2) dancers
         let (i1,i2) = firstTwo ix
@@ -52,12 +52,13 @@ applyDanceMove dancers move = case move of
 
 finalOrderMulti :: Int -> Int -> String -> String
 finalOrderMulti repeatCount dancerCount str = do
+    let dancesUpToCycle = takeWhile notCycle (danceDanceDance repeatCount)
     -- add 1 because takeWhile won't include the dance positions when the cycle is found
-    let cycleLength = 1 + length (takeWhile notCycle (danceDanceDance repeatCount))
+    let cycleLength = 1 + length dancesUpToCycle
     let actualRepeatCount = repeatCount `mod` cycleLength
-    -- dance the needed number of times
-    let newDancers = danceDanceDance actualRepeatCount
-    dancersToString $ last newDancers
+    -- grab the sought dance result from the done dances, since actualRepeatCount < cycleLength
+    let newDancers = if actualRepeatCount == 0 then initialDancers else dancesUpToCycle!!(actualRepeatCount-1)
+    dancersToString newDancers
     where
         moves = parseInput str
         initialDancers = createDancers dancerCount
