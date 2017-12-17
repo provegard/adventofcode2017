@@ -1,6 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
 module Lib where
-import Data.Char
 import qualified Data.Sequence as Seq
 
 type Buffer = Seq.Seq Int
