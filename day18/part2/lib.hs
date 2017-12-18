@@ -25,10 +25,9 @@ type Registers = Map.Map Char Int
 -- curptr regs incoming outgoing waiting
 data State = State { cp :: Int, regs :: Registers, incoming :: Queue, outgoing :: Queue, waiting :: Bool }
 
-newtype System = System [Process]
+data System = System Process Process
 type ProcessId = Int
 data Process = Process { processId :: ProcessId, processState :: State, sent :: Int }
-
 
 second :: [a] -> a
 second x = head $ tail x
@@ -53,9 +52,6 @@ emptyState = State 0 Map.empty [] [] False
 newStateForProcess :: ProcessId -> State
 newStateForProcess pid = State 0 (Map.fromList [('p', pid)]) [] [] False
 
-regValue :: Registers -> Reg -> Int
-regValue regs reg = fromMaybe 0 (Map.lookup reg regs)
-
 getValue :: Registers -> RegOrValue -> Int
 getValue regs x = if head x < 'a' then toInt x else fromMaybe 0 (Map.lookup (head x) regs)
 
@@ -64,14 +60,11 @@ updateRegValue f ma = Just (f (fromMaybe 0 ma))
 
 executeInstruction :: State -> Instruction -> State
 executeInstruction (State ptr regs incoming outgoing waiting) ins = case ins of
-    Set reg value -> State next (Map.insert reg (getValue regs value) regs) incoming outgoing False
-    Add reg value -> State next (Map.alter (updateRegValue (getValue regs value +)) reg regs) incoming outgoing False
-    Mul reg value -> State next (Map.alter (updateRegValue (getValue regs value *)) reg regs) incoming outgoing False
-    Mod reg value -> State next (Map.alter (updateRegValue (`mod` getValue regs value)) reg regs) incoming outgoing False
-    Snd value     -> do
-        -- add to outgoing
-        let valueToSend = getValue regs value
-        State next regs incoming (outgoing ++ [valueToSend]) False
+    Set reg value -> State next (modRegs reg const value) incoming outgoing False
+    Add reg value -> State next (modRegs reg (+) value) incoming outgoing False
+    Mul reg value -> State next (modRegs reg (*) value) incoming outgoing False
+    Mod reg value -> State next (modRegs reg rmod value) incoming outgoing False
+    Snd value     -> State next regs incoming (outgoing ++ [regValue value]) False
     Rcv reg       ->
         if null incoming then
             State ptr regs incoming outgoing True -- wait, ptr is same!
@@ -80,11 +73,15 @@ executeInstruction (State ptr regs incoming outgoing waiting) ins = case ins of
             let newRegs = Map.insert reg receivedValue regs
             State next newRegs (tail incoming) outgoing False
     Jgz n offs    -> do
-        let v = getValue regs n
-        let offset = getValue regs offs
+        let v = regValue n
+        let offset = regValue offs
         let np = if v <= 0 then next else ptr + offset
         State np regs incoming outgoing False
-    where next = 1 + ptr
+    where 
+        next = 1 + ptr
+        regValue = getValue regs
+        modRegs reg f value = Map.alter ((updateRegValue . f . regValue) value) reg regs
+        rmod x y = y `mod` x -- don't know how to pass the standard mod fun to modRegs
 
 newProcess :: ProcessId -> Process
 newProcess pid = let s = newStateForProcess pid
@@ -94,7 +91,7 @@ canRun :: Process -> Bool
 canRun (Process _ state _) = not (waiting state && null (incoming state))
 
 newSystem :: System
-newSystem = System [newProcess 0, newProcess 1]
+newSystem = System (newProcess 0) (newProcess 1)
 
 runProcess :: Process -> Seq.Seq Instruction -> Process
 runProcess (Process pid !initialState sent) !instructions = do
@@ -124,20 +121,19 @@ transfer !src !dst = do
         (newP1, newP2)
 
 runUntilDeadlock :: System -> Seq.Seq Instruction -> System
-runUntilDeadlock system@(System [p1,p2]) instructions
+runUntilDeadlock system@(System p0 p1) instructions
+    | canRun p0 = do
+        let newP0 = runProcess p0 instructions
+        let (newP0', newP2) = transfer newP0 p1
+        runUntilDeadlock (System newP0' newP2) instructions
     | canRun p1 = do
         let newP1 = runProcess p1 instructions
-        let (newP1', newP2) = transfer newP1 p2
-        runUntilDeadlock (System [newP1', newP2]) instructions
-    | canRun p2 = do
-        let newP2 = runProcess p2 instructions
-        let (newP2', newP1) = transfer newP2 p1
-        runUntilDeadlock (System [newP1, newP2']) instructions
+        let (newP1', newP0) = transfer newP1 p0
+        runUntilDeadlock (System newP0 newP1') instructions
     | otherwise = system -- deadlock
 
 sentByP1 :: [String] -> Int
 sentByP1 strInstructions = do
-    let system = newSystem
     let instructions = Seq.fromList $ map parseInstruction strInstructions
-    let (System [_,p1]) = runUntilDeadlock system instructions
+    let (System _ p1) = runUntilDeadlock newSystem instructions
     sent p1
