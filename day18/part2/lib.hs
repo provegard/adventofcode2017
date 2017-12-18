@@ -72,12 +72,13 @@ executeInstruction (State ptr regs incoming outgoing waiting) ins = case ins of
         -- add to outgoing
         let valueToSend = getValue regs value
         State next regs incoming (outgoing ++ [valueToSend]) False
-    Rcv reg       -> case length incoming of
-            0 -> State ptr regs incoming outgoing True -- wait, ptr is same!
-            n -> do
-                let receivedValue = head incoming
-                let newRegs = Map.insert reg receivedValue regs
-                State next newRegs (tail incoming) outgoing False
+    Rcv reg       ->
+        if null incoming then
+            State ptr regs incoming outgoing True -- wait, ptr is same!
+        else do
+            let receivedValue = head incoming
+            let newRegs = Map.insert reg receivedValue regs
+            State next newRegs (tail incoming) outgoing False
     Jgz n offs    -> do
         let v = getValue regs n
         let offset = getValue regs offs
