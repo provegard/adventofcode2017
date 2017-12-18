@@ -4,6 +4,9 @@ import Lib
 import qualified Data.Map.Strict as Map
 import qualified Data.Sequence as Seq
 
+emptyState :: State
+emptyState = State 0 Map.empty [] [] False
+
 main = hspec $ do
     describe "parseInstruction" $ do
         it "parses snd" $ (parseInstruction "snd a") `shouldBe` (Snd "a")

@@ -4,7 +4,6 @@ import qualified Data.Sequence as Seq
 import qualified Data.Map.Strict as Map
 import Data.Char
 import Data.Maybe
-import Debug.Trace
 
 type Reg = Char
 type RegOrValue = String
@@ -29,34 +28,25 @@ data System = System Process Process
 type ProcessId = Int
 data Process = Process { processId :: ProcessId, processState :: State, sent :: Int }
 
-second :: [a] -> a
-second x = head $ tail x
-
 parseInstruction' :: [String] -> Instruction
-parseInstruction' [] = error "empty instruction"
-parseInstruction' (x:rest)
-    | x == "snd" = Snd (head rest)
-    | x == "add" = Add (head (head rest)) (second rest)
-    | x == "mul" = Mul (head (head rest)) (second rest)
-    | x == "mod" = Mod (head (head rest)) (second rest)
-    | x == "set" = Set (head (head rest)) (second rest)
-    | x == "rcv" = Rcv (head (head rest))
-    | x == "jgz" = Jgz (head rest) (second rest)
+parseInstruction' (x:y:rest)
+    | x == "snd" = Snd y
+    | x == "add" = Add (head y) (head rest)
+    | x == "mul" = Mul (head y) (head rest)
+    | x == "mod" = Mod (head y) (head rest)
+    | x == "set" = Set (head y) (head rest)
+    | x == "rcv" = Rcv (head y)
+    | x == "jgz" = Jgz y (head rest)
     | otherwise  = error ("unknown instruction: " ++ x)
+parseInstruction' x = error ("malformed instruction: " ++ concat x)
 parseInstruction :: String -> Instruction
 parseInstruction = parseInstruction' . words
-
-emptyState :: State
-emptyState = State 0 Map.empty [] [] False
 
 newStateForProcess :: ProcessId -> State
 newStateForProcess pid = State 0 (Map.fromList [('p', pid)]) [] [] False
 
 getValue :: Registers -> RegOrValue -> Int
 getValue regs x = if head x < 'a' then toInt x else fromMaybe 0 (Map.lookup (head x) regs)
-
-updateRegValue :: (Int -> Int) -> Maybe Int -> Maybe Int 
-updateRegValue f ma = Just (f (fromMaybe 0 ma))
 
 executeInstruction :: State -> Instruction -> State
 executeInstruction (State ptr regs incoming outgoing waiting) ins = case ins of
@@ -82,7 +72,8 @@ executeInstruction (State ptr regs incoming outgoing waiting) ins = case ins of
         regValue = getValue regs
         modRegs reg f value = Map.alter ((updateRegValue . f . regValue) value) reg regs
         rmod x y = y `mod` x -- don't know how to pass the standard mod fun to modRegs
-
+        updateRegValue f ma = Just (f (fromMaybe 0 ma))
+        
 newProcess :: ProcessId -> Process
 newProcess pid = let s = newStateForProcess pid
                  in Process pid s 0
@@ -97,13 +88,11 @@ runProcess :: Process -> Seq.Seq Instruction -> Process
 runProcess (Process pid !initialState sent) !instructions = do
     let newState = execute initialState
     let newSent = sent + length (outgoing newState)
-    -- let newSent = trace ("sent for " ++ show pid ++ " is now " ++ show newSent') newSent'
     Process pid newState newSent
     where
         execute state = do
             let ins = Seq.index instructions (cp state)
             let newState = executeInstruction state ins
-            -- let newState = trace ("outgoing is now: " ++ (show (outgoing newState')) ++ " after " ++ show ins) newState'
             if waiting newState then newState else execute newState
 
 transfer :: Process -> Process -> (Process, Process)
