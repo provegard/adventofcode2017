@@ -1,12 +1,5 @@
-{-# LANGUAGE BangPatterns #-}
 module Lib where
-import Data.Char
 import Data.Maybe
-import Debug.Trace
-import Data.Foldable
-import Data.List.Split
-import Data.List
-import Text.Read
 import qualified Data.Map.Strict as Map
 
 newtype Position = Position (Int, Int) deriving (Eq, Show, Ord)
@@ -15,18 +8,17 @@ newtype Node = Node Status deriving (Eq, Show)
 newtype Grid = Grid (Map.Map Position Node) deriving (Eq, Show)
 data Direction = South | East | West | North deriving (Eq, Show)
 data World = World Grid Position Direction Int deriving (Eq, Show)
-data Turn = TLeft | TRight | TReverse deriving (Eq, Show)
+data Turn = TLeft | TRight | TReverse deriving (Eq, Show) -- 'T' prefix to not collide with those in Prelude
 
 turn :: Direction -> Turn -> Direction
-turn North TLeft  = West
-turn North TRight = East
-turn East TLeft   = North
-turn East TRight  = South
-turn South TLeft  = East
-turn South TRight = West
-turn West TLeft   = South
-turn West TRight  = North
-
+turn North TLeft    = West
+turn North TRight   = East
+turn East TLeft     = North
+turn East TRight    = South
+turn South TLeft    = East
+turn South TRight   = West
+turn West TLeft     = South
+turn West TRight    = North
 turn North TReverse = South
 turn South TReverse = North
 turn East TReverse  = West
@@ -39,16 +31,16 @@ newNode :: Node
 newNode = Node Clean
 
 treatNode :: Node -> Node
-treatNode (Node Clean) = Node Weakened
+treatNode (Node Clean)    = Node Weakened
 treatNode (Node Weakened) = Node Infected
 treatNode (Node Infected) = Node Flagged
-treatNode (Node Flagged) = Node Clean
+treatNode (Node Flagged)  = Node Clean
 
 whichTurn :: Node -> Maybe Turn
 whichTurn (Node Clean)    = Just TLeft
 whichTurn (Node Weakened) = Nothing
 whichTurn (Node Infected) = Just TRight
-whichTurn node            = Just TReverse
+whichTurn _               = Just TReverse
 
 move :: Position -> Direction -> Position
 move (Position (r,c)) North = Position (r-1,c)
@@ -87,9 +79,9 @@ parseWorld lines = do
         toNodes :: [(Int, String)] -> [(Position, Node)]
         toNodes = concatMap (\(row,s) -> parseNodes s row 0)
         parseNodes :: String -> Int -> Int -> [(Position, Node)]
-        parseNodes [] row col = []
+        parseNodes [] _ _            = []
         parseNodes (ch:rest) row col = do
-            let status = if ch == '#' then Infected else Clean
             let pos = Position (row,col)
-            let node = Node status
+            let node = Node (status ch)
             (pos, node) : parseNodes rest row (col + 1)
+        status ch = if ch == '#' then Infected else Clean
