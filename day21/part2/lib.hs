@@ -1,13 +1,9 @@
-{-# LANGUAGE BangPatterns #-}
 module Lib where
-import Data.Char
 import Data.Maybe
 import Debug.Trace
 import Data.Foldable
 import Data.List.Split
 import Data.List
-import Text.Read
-
 
 newtype Grid = Grid [String] deriving (Show, Eq)
 data Rule = Rule Grid Grid deriving (Show, Eq)
@@ -36,21 +32,19 @@ rotateGrid (Grid lines) = Grid $ rot lines
         heads = map head
         rest = map (drop 1)
 
-matches :: Grid -> Grid -> Bool
-matches expected actual | expected == actual = True
-matches expected actual | expected == flipGrid actual = True
-matches expected actual | expected == flipGridV actual = True
-matches expected actual = do
-    let rotations = drop 1 $ scanl (\g _ -> rotateGrid g) actual [0..2]
-    any matchRot rotations
+-- generate all variants of a grid (including the grid itself)
+variants :: Grid -> [Grid]
+variants grid = do
+    let rotations = scanl (\g _ -> rotateGrid g) grid [0..2]
+    concatMap variants' rotations
     where
-        matchRot r | expected == r = True
-        matchRot r | expected == flipGrid r = True
-        matchRot r | expected == flipGridV r = True
-        matchRot r = False
+        variants' grid = [grid, flipGrid grid, flipGridV grid]
 
 gridSize :: Grid -> Int
 gridSize (Grid lines) = length lines
+
+matches :: Grid -> Grid -> Bool
+matches a b = (gridSize a == gridSize b) && a == b
 
 splitGrid :: Grid -> [Grid]
 splitGrid grid@(Grid lines) = do
@@ -119,9 +113,13 @@ transform grid rules = do
     --trace ("-> " ++ show res) res
     res
 
+expandRules :: [Rule] -> [Rule]
+expandRules [] = []
+expandRules (Rule input output : rest) = map (`Rule` output) (variants input) ++ expandRules rest
+
 run :: [String] -> Int -> Int
 run input iterations = do
-    let rules = map parseRule input
+    let rules = expandRules $ map parseRule input
     let grid = startGrid
     let result = foldl (\g _ -> transform g rules) grid [1..iterations]
     pixelsOn result
