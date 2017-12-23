@@ -7,29 +7,32 @@ namespace Aoc1723
         static void Main(string[] args)
         {
             var b = 109900;
-            var c = 126900;
             var d = 0;
             var e = 0;
             var f = 0;
             var g = 0;
             var h = 0;
-            var iter = 1000000;
-            while (--iter > 0)
+            var iter = 0;
+            while (true)
             {
+                if (iter++ > 1000000) throw new Exception("oops");
                 f = 1;
                 d = 2;
                 do
                 {
-                    if (b % d == 0) f = 0;
+                    if (b % d == 0)
+                    {
+                        f = 0;
+                        break;
+                    }
                     d = d + 1;
-                    g = d - b;
+                    g = d - 357;
                 } while (g != 0);
                 if (f == 0) h = h + 1;
-                g = b - c;
+                g = b - 126900;
                 if (g == 0) break;
                 b = b + 17;
             }
-            if (iter == 0) throw new Exception("oops");
             Console.WriteLine(h);
         }
     }
