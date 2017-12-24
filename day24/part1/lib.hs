@@ -48,6 +48,15 @@ parseLine str = do
 createComponents :: [String] -> [Component]
 createComponents = map parseLine
 
+isValidBridge :: Bridge -> Bool
+isValidBridge (Bridge (x:components)) = validConnections (otherPort x 0) components
+    where
+        validConnections _ [] = True
+        validConnections n (a:rest) = do
+            let (Component a1 a2) = a
+            (n == a1 || n == a2) && validConnections (otherPort a n) rest
+        otherPort (Component a b) p = if a == p then b else a
+
 build :: [Component] -> [Bridge]
 build components = do
     let compMap = createComponentMap components
@@ -60,7 +69,7 @@ build components = do
     let (g, lookupNode, lookupVertex) = G.graphFromEdges graphInput
     let startVertices = mapMaybe (lookupVertex . keyOf) starters
     let forest = G.dfs g startVertices
-    map (`toBridge` lookupNode) forest
+    filter isValidBridge $ map (`toBridge` lookupNode) forest
     where
         isStarter (Component a b) = a == 0 || b == 0
         keyOf (Component a b) = a * 1024 + b
@@ -77,5 +86,5 @@ findStrongest :: [String] -> (Int, Bridge)
 findStrongest strings = do
     let components = createComponents strings
     let bridges = build components
-    let b = maximumBy (\a b -> compare (strength a) (strength b)) bridges
+    let b = if null bridges then error "no valid bridges" else maximumBy (\a b -> compare (strength a) (strength b)) bridges
     (strength b, b)

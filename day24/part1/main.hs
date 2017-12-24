@@ -4,5 +4,6 @@ import Lib
 main = do
     contents <- getContents
     let strings = lines contents
-    let (s, _) = findStrongest strings
+    let (s, b) = findStrongest strings
     print s
+    print b
