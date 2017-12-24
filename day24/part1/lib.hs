@@ -6,63 +6,56 @@ import Data.Char
 import Data.Maybe
 import Data.List.Split
 import Data.List
+import qualified Data.Set as Set
 
-data Port = Port Int Int deriving (Eq, Show)
+data Component = Component Int Int deriving (Eq, Show, Ord)
 
-newtype Bridge = Bridge [Port]
+newtype Bridge = Bridge [Component] deriving (Eq, Show)
 
 strength :: Bridge -> Int
-strength (Bridge ports) = let portStrength (Port a b) = a + b
-                          in sum $ map portStrength ports 
+strength (Bridge ports) = let compStrength (Component a b) = a + b
+                          in sum $ map compStrength ports 
 
 toInt :: String -> Int
 toInt x = read x :: Int
 
-parseLine :: String -> Port
+parseLine :: String -> Component
 parseLine str = do
     let (a:b:rest) = splitOn "/" str
-    Port (toInt a) (toInt b)
+    Component (toInt a) (toInt b)
 
-createPorts :: [String] -> [Port]
-createPorts = map parseLine
+createComponents :: [String] -> [Component]
+createComponents = map parseLine
 
-fitTogether :: Port -> Port -> Bool
-fitTogether (Port p1a p1b) (Port p2a p2b) = p1a == p2a || p1a == p2b || p1b == p2a || p1b == p2b
+fitTogether :: Component -> Component -> Bool
+fitTogether (Component p1a p1b) (Component p2a p2b) = p1a == p2a || p1a == p2b || p1b == p2a || p1b == p2b
 
-portWithOthers :: [Port] -> [(Port, [Port])]
-portWithOthers [] = []
-portWithOthers ports = map combo [0..(length ports - 1)]
-    where 
-        combo idx = do
-            let (x,y) = splitAt idx ports
-            let next = head y
-            let others = x ++ drop 1 y
-            (next, others)
-
-build' :: [Port] -> [[Port]]
-build' ports = do
-    let combos = portWithOthers ports
-    -- TODO: Generates duplicate port lists!
-    concatMap (\(p, rest) -> [p] : combine p rest) combos
+build' :: [Component] -> [[Component]]
+build' !components = do
+    let (starters, rest) = partition isStarter components
+    let restSet = Set.fromList rest
+    --concatMap (\s -> [s] : buildFrom (Set.singleton s) s rest) starters
+    concatMap (\s -> [s] : buildFrom (Set.singleton s) [s] s (Set.delete s restSet)) starters
     where
-        combine :: Port -> [Port] -> [[Port]]
-        combine p others = do
-            let (ok, nok) = partition (fitTogether p) others
-            -- for each port in 'ok', create a combination
-            if null ok then [] else concatMap (\i -> combine' p i ok nok)[0..(length ok - 1)]
-        combine' :: Port -> Int -> [Port] -> [Port] -> [[Port]]
-        combine' p idx ok nok = do
-            let (x,y) = splitAt idx ok
-            let next = head y
-            let others = x ++ drop 1 y
-            [p, next] : combine next (others ++ nok)
+        isStarter (Component a b) = a == 0 || b == 0
+        buildFrom :: Set.Set Component -> [Component] -> Component -> Set.Set Component -> [[Component]]
+        buildFrom !used !previousList previous !othersSet = do
+            -- a connector is ok if it fits with the previous and hasn't been used
+            --let others = Set.toList othersSet
+            let candidateSet = Set.filter (\c -> fitTogether previous c && not (Set.member c used)) othersSet
+            let candidates = Set.toList candidateSet
+            concatMap (\c -> do
+                let compList = previousList ++ [c]
+                compList : buildFrom (Set.insert c used) compList c (Set.delete c othersSet)) candidates
 
-build :: [Port] -> [Bridge]
-build ports = map Bridge $ build' ports
+build :: [Component] -> [Bridge]
+build components = map Bridge $ build' components
 
-findStrongest :: [String] -> Int
+findStrongest :: [String] -> (Int, Bridge)
 findStrongest strings = do
-    let ports = createPorts strings
-    let bridges = build ports
-    let strengths = map strength bridges
-    maximum strengths
+    let components = createComponents strings
+    let bridges = build components
+    let b = maximumBy (\a b -> compare (strength a) (strength b)) bridges
+    -- let strengths = map strength bridges
+    -- maximum strengths
+    (strength b, b)
