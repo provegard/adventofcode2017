@@ -1,0 +1,38 @@
+{-# LANGUAGE BangPatterns #-}
+module Lib where
+import qualified Data.Sequence as Seq
+import qualified Data.Map.Strict as Map
+import Data.Char
+import Data.Maybe
+import Data.List.Split
+
+data Port = Port Int Int deriving (Eq, Show)
+
+newtype Ports = Ports (Map.Map Int Port)
+
+newtype Bridge = Bridge [Ports]
+
+strength :: Bridge -> Int
+strength (Bridge ports) = let portStrength (Port a b) = a + b
+                          in sum $ map portStrength ports 
+
+toInt :: String -> Int
+toInt x = read x :: Int
+
+parseLine :: String -> Port
+parseLine str = do
+    let (a:b:rest) = splitOn "/" str
+    Port (toInt a) (toInt b)
+
+createPorts :: [String] -> Ports
+createPorts strings = do
+    let ports = map parseLine strings
+    let prefixed = concatMap variants ports
+    Map.fromList prefixed
+    where
+        variants p@(Port a b) = [(a, p), (b, p)]
+
+build :: Ports -> [Bridge]
+build (Ports m) = do
+    let port = Map.take 1 m
+    let rest = Map.delete
