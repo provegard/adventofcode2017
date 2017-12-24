@@ -15,7 +15,7 @@ main = hspec $ do
         it "builds from two matching ports" $ do
             let ports = [Component 0 2, Component 2 3]
             let actual = build ports
-            actual `shouldBe` [Bridge [Component 2 3, Component 0 2]]
+            actual `shouldBe` [Bridge [Component 0 2, Component 2 3]]
         it "builds from two start components" $ do
             let ports = [Component 0 2, Component 0 4]
             let actual = build ports
