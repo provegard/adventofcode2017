@@ -85,7 +85,7 @@ getCurrentState m = do
 updateTape :: Machine -> Int -> Tape
 updateTape m value = do
     let (Tape tm) = tape m
-    let newMap = Map.insert (cursor m) value tm
+    let newMap = if value == 0 then Map.delete (cursor m) tm else Map.insert (cursor m) value tm
     Tape newMap 
 
 execute :: Machine -> Machine
