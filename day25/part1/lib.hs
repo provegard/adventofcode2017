@@ -7,28 +7,23 @@ import qualified Data.Set as Set
 import qualified Data.Map.Strict as Map
 import Data.Char (isSpace)
 
+newtype Tape = Tape (Set.Set Int) deriving (Eq, Show)
+data Rule = Rule { valueToWrite :: Int, moveOffset :: Int, nextState :: String } deriving (Eq, Show)
+data State = State { stateName :: String, rule0 :: Rule, rule1 :: Rule } deriving (Eq, Show)
+newtype States = States (Map.Map String State) deriving (Eq, Show)
+data Machine = Machine { tape :: Tape, cursor :: Int, currentState :: String, stepsLeft :: Int, states :: States } deriving (Eq, Show)
+
+
+toInt x = read x :: Int
 trim :: String -> String
 trim = f . f
    where f = reverse . dropWhile isSpace
-
-newtype Tape = Tape (Set.Set Int) deriving (Eq, Show)
-
-data Rule = Rule { valueToWrite :: Int, moveOffset :: Int, nextState :: String } deriving (Eq, Show)
-
-data State = State { stateName :: String, rule0 :: Rule, rule1 :: Rule } deriving (Eq, Show)
-
-newtype States = States (Map.Map String State) deriving (Eq, Show)
-
-data Machine = Machine { tape :: Tape, cursor :: Int, currentState :: String, stepsLeft :: Int, states :: States } deriving (Eq, Show)
-
-newTape = Tape Set.empty
-
-newStates = States Map.empty
-
-toInt x = read x :: Int
-
 splitWords :: String -> [String]
 splitWords s = splitOneOf " .:" (trim s)
+
+newTape = Tape Set.empty
+newStates = States Map.empty
+newMachine = Machine newTape 0 "" 0 newStates
 
 parse :: Machine -> [String] -> [String] -> (Machine, [String])
 parse m ("Begin":_:_:name:_) rest    = (m { currentState = name }, rest)
@@ -52,58 +47,46 @@ parse m ("In":_:name:_) rest = do
         parseDescLine (_:"Continue":_:_:nxt:_) = nxt
         parseDescLine ("If":_:_:_:_:v:_) = v
         parseDescLine x = error ("Unknown description line: " ++ show x)
-        
-
+-- parse empty (or unknown) line
 parse m x rest = (m, rest)
 
 parseInput :: [String] -> Machine
-parseInput inputLines = do
-    let machine = Machine newTape 0 "" 0 newStates
-    --foldl parseLine machine inputLines
-    parseLines machine inputLines
+parseInput = parseLines newMachine
     where
-        parseLines m [] = m
-        parseLines m [x] = do
-            let (m', _) = parse m (splitWords x) []
-            m'
-        parseLines m (l:rest) = do
-            let (m', newRest) = parse m (splitWords l) rest
-            parseLines m' newRest
+        parseLines m []       = m
+        parseLines m [x]      = fst $ parse m (splitWords x) []
+        parseLines m (l:rest) = uncurry parseLines $ parse m (splitWords l) rest
 
 valueAtCursor :: Machine -> Int
-valueAtCursor m = do
-    let (Tape ts) = tape m
-    if Set.member (cursor m) ts then 1 else 0
+valueAtCursor m = let (Tape ts) = tape m
+                  in  if Set.member (cursor m) ts then 1 else 0
 
 getCurrentState :: Machine -> State
-getCurrentState m = do
+getCurrentState m =
     let (States sm) = states m
-    let s = currentState m
-    fromMaybe (error ("Unknown state: " ++ s)) $ Map.lookup s sm
+        s = currentState m
+    in  fromMaybe (error ("Unknown state: " ++ s)) $ Map.lookup s sm
 
 updateTape :: Machine -> Int -> Tape
-updateTape m value = do
+updateTape m value =
     let (Tape ts) = tape m
-    let newSet = if value == 1 then Set.insert (cursor m) ts else Set.delete (cursor m) ts
-    Tape newSet
+        newSet = (if value == 1 then Set.insert else Set.delete) (cursor m) ts
+    in  Tape newSet
 
 execute :: Machine -> Machine
 execute m | stepsLeft m == 0 = m
-execute m = do
+execute m =
     let curVal = valueAtCursor m
-    let (State _ r0 r1) = getCurrentState m
-    let rule = if curVal == 0 then r0 else r1
-    let newTape = updateTape m (valueToWrite rule)
-    let newCursor = cursor m + moveOffset rule
-    let newState = nextState rule
-    execute $ Machine newTape newCursor newState (stepsLeft m - 1) (states m)
+        (State _ r0 r1) = getCurrentState m
+        rule = if curVal == 0 then r0 else r1
+        newTape = updateTape m (valueToWrite rule)
+        newCursor = cursor m + moveOffset rule
+        newState = nextState rule
+    in  execute $ Machine newTape newCursor newState (stepsLeft m - 1) (states m)
 
 checksum :: Machine -> Int
-checksum m = do
-    let (Tape ts) = tape m
-    Set.size ts
+checksum m = let (Tape ts) = tape m
+             in  Set.size ts
 
 executeInput :: [String] -> Machine
-executeInput strings = do
-    let machine = parseInput strings
-    execute machine
+executeInput strings = execute $ parseInput strings
