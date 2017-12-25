@@ -1,18 +1,17 @@
 {-# LANGUAGE BangPatterns #-}
 module Lib where
-import qualified Data.Sequence as Seq
-import qualified Data.Map.Strict as Map
 import Data.Maybe
 import Data.List.Split
 import Data.List
 import qualified Data.Set as Set
+import qualified Data.Map.Strict as Map
 import Data.Char (isSpace)
 
 trim :: String -> String
 trim = f . f
    where f = reverse . dropWhile isSpace
 
-newtype Tape = Tape (Map.Map Int Int) deriving (Eq, Show)
+newtype Tape = Tape (Set.Set Int) deriving (Eq, Show)
 
 data Rule = Rule { valueToWrite :: Int, moveOffset :: Int, nextState :: String } deriving (Eq, Show)
 
@@ -22,7 +21,7 @@ newtype States = States (Map.Map String State) deriving (Eq, Show)
 
 data Machine = Machine { tape :: Tape, cursor :: Int, currentState :: String, stepsLeft :: Int, states :: States } deriving (Eq, Show)
 
-newTape = Tape Map.empty
+newTape = Tape Set.empty
 
 newStates = States Map.empty
 
@@ -73,8 +72,8 @@ parseInput inputLines = do
 
 valueAtCursor :: Machine -> Int
 valueAtCursor m = do
-    let (Tape tm) = tape m
-    fromMaybe 0 $ Map.lookup (cursor m) tm
+    let (Tape ts) = tape m
+    if Set.member (cursor m) ts then 1 else 0
 
 getCurrentState :: Machine -> State
 getCurrentState m = do
@@ -84,9 +83,9 @@ getCurrentState m = do
 
 updateTape :: Machine -> Int -> Tape
 updateTape m value = do
-    let (Tape tm) = tape m
-    let newMap = if value == 0 then Map.delete (cursor m) tm else Map.insert (cursor m) value tm
-    Tape newMap 
+    let (Tape ts) = tape m
+    let newSet = if value == 1 then Set.insert (cursor m) ts else Set.delete (cursor m) ts
+    Tape newSet
 
 execute :: Machine -> Machine
 execute m | stepsLeft m == 0 = m
@@ -101,8 +100,8 @@ execute m = do
 
 checksum :: Machine -> Int
 checksum m = do
-    let (Tape tm) = tape m
-    Map.foldl (+) 0 tm
+    let (Tape ts) = tape m
+    Set.size ts
 
 executeInput :: [String] -> Machine
 executeInput strings = do
